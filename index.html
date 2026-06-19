@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>MedAI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root {
   --bg: #F0F4F8; --surface: #FFFFFF; --border: #E2E8F0;
@@ -35,7 +36,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .course-card .c-name { font-size: 14px; font-weight: 700; }
 .course-card .c-count { font-size: 12px; color: var(--text2); margin-top: 3px; }
 .course-card .c-del { position: absolute; top: 8px; right: 8px; background: var(--red-light); border: none; border-radius: 6px; color: var(--red); font-size: 12px; padding: 2px 6px; cursor: pointer; display: none; }
-.course-card:hover .c-del { display: block; }
+.course-card:active .c-del { display: block; }
 .add-course-btn { background: var(--accent-light); border: 2px dashed var(--accent); border-radius: var(--radius); padding: 16px; cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
 .folder-header { background: var(--accent); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 200; }
 .back-btn { background: rgba(255,255,255,0.2); border: none; border-radius: 8px; color: #fff; padding: 6px 10px; cursor: pointer; font-size: 14px; }
@@ -112,7 +113,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
-    <body>
+<body>
 <div class="page active" id="page-courses">
   <div class="top-header"><h1>🩺 MedAI</h1><p>Tıp Öğrenci Asistanı</p></div>
   <div class="section">
@@ -128,7 +129,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="upload-area" id="folderUploadArea">
     <div class="u-icon">📄</div>
-    <p><span>Dosya yükle</span> veya sürükle bırak</p>
+    <p><span>Dosya yükle</span> — PDF, Word, Fotoğraf</p>
     <input type="file" id="folderFileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" multiple style="display:none">
   </div>
   <div class="file-list" id="fileList">
@@ -170,7 +171,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="top-header" style="background:linear-gradient(135deg,#92400E,#D97706)"><h1>📝 Sınav Analizi</h1><p>Soruları yükle, kaynağını bul</p></div>
   <div class="exam-upload" id="examUploadArea" onclick="document.getElementById('examFileInput').click()">
     <div class="eu-icon">📋</div><p>Sınav sorusu yükle</p>
-    <input type="file" id="examFileInput" accept=".txt" style="display:none">
+    <input type="file" id="examFileInput" accept=".txt,.pdf" style="display:none">
   </div>
   <div style="padding:0 16px 12px">
     <button class="primary-btn" id="manualAddQ" style="background:#D97706">✏️ Soru Manuel Ekle</button>
@@ -221,11 +222,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 <div class="toast" id="toast"></div>
-   <script>
-let data = JSON.parse(localStorage.getItem('medai_v2')||'null')||{courses:[{id:'c1',name:'Anatomi',icon:'🦴',files:[],color:'#0F4C81'},{id:'c2',name:'Fizyoloji',icon:'❤️',files:[],color:'#DC2626'},{id:'c3',name:'Biyokimya',icon:'🧬',files:[],color:'#059669'}],notes:[],questions:[]};
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let data=JSON.parse(localStorage.getItem('medai_v3')||'null')||{courses:[{id:'c1',name:'Anatomi',icon:'🦴',files:[],color:'#0F4C81'},{id:'c2',name:'Fizyoloji',icon:'❤️',files:[],color:'#DC2626'},{id:'c3',name:'Biyokimya',icon:'🧬',files:[],color:'#059669'}],notes:[],questions:[]};
 let activeCourseId=null,viewingNoteId=null,chatHistory=[];
 const EMOJIS=['📚','🦴','❤️','🧬','💊','🩺','🧠','🫀','🫁','🧫','💉','🩻','🦷','👁','📋','🔬','⚕️','🩸','🧪','💡'];
-function saveData(){localStorage.setItem('medai_v2',JSON.stringify(data));}
+function saveData(){localStorage.setItem('medai_v3',JSON.stringify(data));}
+
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -236,7 +240,9 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     if(btn.dataset.page==='exam')renderQuestions();
   });
 });
+
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
 function renderCourses(){
   document.getElementById('courseGrid').innerHTML=data.courses.map(c=>`<div class="course-card" onclick="openCourse('${c.id}')" style="border-left-color:${c.color}"><button class="c-del" onclick="event.stopPropagation();deleteCourse('${c.id}')">✕</button><div class="c-icon">${c.icon}</div><div class="c-name">${c.name}</div><div class="c-count">${c.files.length} dosya</div></div>`).join('');
   const sel=document.getElementById('noteCourseSel');
@@ -265,15 +271,56 @@ function openCourse(id){
 }
 document.getElementById('backFromFolder').addEventListener('click',()=>{showPage('page-courses');renderCourses();});
 document.getElementById('folderUploadArea').addEventListener('click',()=>document.getElementById('folderFileInput').click());
+
+async function extractPdfText(file){
+  return new Promise((resolve)=>{
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+      try{
+        const pdf=await pdfjsLib.getDocument({data:e.target.result}).promise;
+        let text='';
+        for(let i=1;i<=Math.min(pdf.numPages,10);i++){
+          const page=await pdf.getPage(i);
+          const content=await page.getTextContent();
+          text+=content.items.map(item=>item.str).join(' ')+'\n';
+        }
+        resolve(text.trim());
+      }catch(err){resolve('');}
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 document.getElementById('folderFileInput').addEventListener('change',async(e)=>{
   const files=Array.from(e.target.files);
   const course=data.courses.find(c=>c.id===activeCourseId);
+  toast('Yükleniyor...');
   for(const file of files){
+    let extractedText='';
+    if(file.type==='application/pdf'){
+      extractedText=await extractPdfText(file);
+    }
     const reader=new FileReader();
-    await new Promise(res=>{reader.onload=ev=>{course.files.push({id:'f'+Date.now()+Math.random(),name:file.name,type:file.type,size:file.size,data:ev.target.result,date:new Date().toISOString(),summary:null});res();};reader.readAsDataURL(file);});
+    await new Promise(res=>{
+      reader.onload=ev=>{
+        course.files.push({
+          id:'f'+Date.now()+Math.random(),
+          name:file.name,
+          type:file.type,
+          size:file.size,
+          data:ev.target.result,
+          text:extractedText,
+          date:new Date().toISOString(),
+          summary:null
+        });
+        res();
+      };
+      reader.readAsDataURL(file);
+    });
   }
   saveData();renderFileList();toast(files.length+' dosya yüklendi ✅');e.target.value='';
 });
+
 function renderFileList(){
   const course=data.courses.find(c=>c.id===activeCourseId);
   const list=document.getElementById('fileList');
@@ -281,22 +328,27 @@ function renderFileList(){
   list.innerHTML=course.files.map(f=>{
     const icon=f.type?.includes('pdf')?'📕':f.type?.includes('image')?'🖼':'📄';
     const kb=(f.size/1024).toFixed(1);
-    return `<div class="file-item"><div class="file-icon">${icon}</div><div class="file-info"><div class="file-name">${f.name}</div><div class="file-meta">${kb} KB</div><div class="file-actions"><button class="tag-btn tag-ai" onclick="summarizeFile('${f.id}')">🤖 AI Özet</button><button class="tag-btn tag-del" onclick="deleteFile('${f.id}')">🗑 Sil</button></div>${f.summary?`<div style="margin-top:10px;padding:10px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.5">${f.summary}</div>`:''}<div id="sum-${f.id}"></div></div></div>`;
+    const hasText=f.text&&f.text.length>0;
+    return `<div class="file-item"><div class="file-icon">${icon}</div><div class="file-info"><div class="file-name">${f.name}</div><div class="file-meta">${kb} KB${hasText?' · Metin okundu ✅':''}</div><div class="file-actions"><button class="tag-btn tag-ai" onclick="summarizeFile('${f.id}')">🤖 AI Özet</button><button class="tag-btn tag-del" onclick="deleteFile('${f.id}')">🗑 Sil</button></div>${f.summary?`<div style="margin-top:10px;padding:10px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.5">${f.summary}</div>`:''}<div id="sum-${f.id}"></div></div></div>`;
   }).join('');
 }
+
 function deleteFile(fileId){const course=data.courses.find(c=>c.id===activeCourseId);course.files=course.files.filter(f=>f.id!==fileId);saveData();renderFileList();toast('Dosya silindi');}
+
 async function summarizeFile(fileId){
   const course=data.courses.find(c=>c.id===activeCourseId);
   const file=course.files.find(f=>f.id===fileId);
   const div=document.getElementById('sum-'+fileId);
   div.innerHTML='<div class="ai-loading"><div class="spinner"></div><span>AI özetleniyor...</span></div>';
+  const content=file.text?file.text.substring(0,3000):'Dosya adı: '+file.name;
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:'Sen bir tıp eğitim asistanısın. Türkçe yanıt ver. Özeti şu formatta ver:\n📌 KONU: [ana konu]\n📝 ÖZET: [2-3 cümle]\n🔑 ANAHTAR NOKTALAR: [3-5 madde]',messages:[{role:'user',content:'Bu tıp dosyasını özetle: '+file.name}]})});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:'Sen bir tıp eğitim asistanısın. Türkçe yanıt ver.\n📌 KONU: [ana konu]\n📝 ÖZET: [2-3 cümle]\n🔑 ANAHTAR NOKTALAR: [3-5 madde]',messages:[{role:'user',content:'Bu tıp içeriğini özetle:\n'+content}]})});
     const result=await resp.json();
     file.summary=result.content?.[0]?.text||'Özet alınamadı.';
     saveData();renderFileList();
   }catch(e){div.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:8px">⚠️ Hata oluştu</div>';}
 }
+
 const canvas=document.getElementById('drawCanvas');
 const ctx=canvas.getContext('2d');
 let drawing=false,tool='pen',penColor='#1E293B',penSize=3,lastX=0,lastY=0;
@@ -328,6 +380,7 @@ function renderNotesList(){
 }
 function viewNote(id){viewingNoteId=id;const n=data.notes.find(x=>x.id===id);document.getElementById('viewNoteImg').src=n.img;document.getElementById('viewNoteTitle').textContent=n.courseName+' Notu';openModal('viewNoteModal');}
 function deleteNote(){data.notes=data.notes.filter(n=>n.id!==viewingNoteId);saveData();closeModal('viewNoteModal');renderNotesList();toast('Not silindi');}
+
 document.getElementById('manualAddQ').addEventListener('click',()=>openModal('addQuestionModal'));
 function addQuestion(){const text=document.getElementById('questionText').value.trim();if(!text){toast('Soru gir!');return;}data.questions.push({id:'q'+Date.now(),text,analysis:null,date:new Date().toISOString()});saveData();renderQuestions();closeModal('addQuestionModal');toast('Soru eklendi ✅');}
 function renderQuestions(){
@@ -340,10 +393,10 @@ async function analyzeQuestion(qId){
   const q=data.questions.find(x=>x.id===qId);
   const div=document.getElementById('qa-'+qId);
   div.innerHTML='<div class="ai-loading" style="margin-top:10px"><div class="spinner"></div><span>AI analiz ediyor...</span></div>';
-  let ctx='Yüklü dosyalar:\n';
-  data.courses.forEach(c=>c.files.forEach(f=>{ctx+=`[${c.name}] ${f.name}${f.summary?' - '+f.summary.substring(0,100):''}\n`;}));
+  let ctx='Yüklü ders materyalleri:\n';
+  data.courses.forEach(c=>c.files.forEach(f=>{ctx+=`[${c.name}] ${f.name}${f.text?' - İçerik: '+f.text.substring(0,500):f.summary?' - Özet: '+f.summary.substring(0,200):''}\n`;}));
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:'Sen tıp eğitim asistanısın. Türkçe yanıt ver. Sadece JSON döndür: {"explanation":"açıklama","source":"kaynak ders"}',messages:[{role:'user',content:ctx+'\nSoru: '+q.text}]})});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:'Sen tıp eğitim asistanısın. Türkçe yanıt ver. Sadece JSON döndür: {"explanation":"açıklama","source":"kaynak ders ve sayfa"}',messages:[{role:'user',content:ctx+'\nSoru: '+q.text}]})});
     const result=await resp.json();
     let text=result.content?.[0]?.text||'{}';
     text=text.replace(/```json|```/g,'').trim();
@@ -351,6 +404,7 @@ async function analyzeQuestion(qId){
     q.analysis=analysis;saveData();renderQuestions();
   }catch(e){div.innerHTML='<div style="color:var(--red);font-size:12px;margin-top:8px">⚠️ Hata oluştu</div>';}
 }
+
 const chatMessages=document.getElementById('chatMessages');
 const chatInput=document.getElementById('chatInput');
 document.getElementById('chatSendBtn').addEventListener('click',sendChat);
@@ -359,8 +413,10 @@ async function sendChat(){
   const msg=chatInput.value.trim();if(!msg)return;chatInput.value='';
   addBubble(msg,'user');chatHistory.push({role:'user',content:msg});
   const loadEl=document.createElement('div');loadEl.className='chat-bubble ai';loadEl.innerHTML='<div class="ai-loading"><div class="spinner"></div><span>Düşünüyor...</span></div>';chatMessages.appendChild(loadEl);chatMessages.scrollTop=chatMessages.scrollHeight;
+  let dosyaCtx='Öğrencinin materyalleri:\n';
+  data.courses.forEach(c=>{if(c.files.length>0){dosyaCtx+=`${c.icon} ${c.name}: ${c.files.map(f=>f.name).join(', ')}\n`;}});
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:'Sen MedAI, tıp öğrencileri için asistansın. Türkçe konuş. Kısa ve net ol. Emojiler kullan.',messages:chatHistory})});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:'Sen MedAI, tıp öğrencileri için asistansın. Türkçe konuş. Kısa ve net ol. Emojiler kullan.\n'+dosyaCtx,messages:chatHistory})});
     const result=await resp.json();
     const reply=result.content?.[0]?.text||'Yanıt alınamadı.';
     chatHistory.push({role:'assistant',content:reply});loadEl.remove();addBubble(reply,'ai');
