@@ -214,8 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 <div class="toast" id="toast"></div>
 <script>
-const API_KEY='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';
-const HEADERS={'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-dangerous-direct-browser-access':'true'};
+access':'true'};
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 let data=JSON.parse(localStorage.getItem('medai_v3')||'null')||{courses:[{id:'c1',name:'Anatomi',icon:'🦴',files:[],color:'#0F4C81'},{id:'c2',name:'Fizyoloji',icon:'❤️',files:[],color:'#DC2626'},{id:'c3',name:'Biyokimya',icon:'🧬',files:[],color:'#059669'}],notes:[],questions:[]};
 let activeCourseId=null,viewingNoteId=null,chatHistory=[];
